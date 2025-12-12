@@ -12,13 +12,13 @@ matplotlib.use('Agg')
 st.set_page_config(page_title="Eco-Cost Analyzer", layout="wide")
 
 # --- KONSTANTA PROYEK ---
-TARIF_PLN = 1400 # Rupiah per kWh (Tarif non-subsidi acuan)
+TARIF_PLN = 1400 
 FILE_DATA = 'produksi_emisi_provinsi.csv' 
 WP_CHOICES = [300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]
 MIN_PV_MODULES = 1 
-TAHUN_ANALISIS = 15 # Proyeksi Jangka Panjang
-ASUMSI_INFLASI_LISTRIK = 0.05 # Asumsi kenaikan tarif listrik 5% per tahun
-BIAYA_AWAL_PV_PER_Wp = 15000 # Asumsi biaya instalasi PV Rp 15.000 per Wp
+TAHUN_ANALISIS = 15 
+ASUMSI_INFLASI_LISTRIK = 0.05 
+BIAYA_AWAL_PV_PER_Wp = 15000 
 
 # --- FUNGSI UTILITY ---
 def format_rupiah(x):
@@ -33,7 +33,6 @@ def format_rupiah(x):
 def load_data(file_path):
     """Memuat data, mencoba kedua delimiter, dan mengonversi format desimal."""
     try:
-        # (Kode load_data tetap sama, fokus pada fungsionalitas dan robust data loading)
         df = pd.read_csv(file_path, delimiter=',')
         if len(df.columns) <= 2:
             df = pd.read_csv(file_path, delimiter=';')
@@ -72,7 +71,7 @@ if data_solar.empty:
 st.title("☀️ Analisis Penghematan Biaya dan Pengurangan Emisi Ketika Menggunakan PV Rumahan")
 st.markdown("""
 Aplikasi ini membantu Anda menghitung potensi **penghematan biaya listrik (Rp)** dan **dampak lingkungan (emisi CO2)**
-dengan beralih ke energi surya mandiri, disesuaikan dengan **lokasi provinsi** dan **konsumsi listrik** Anda.
+dengan beralih ke energi surya mandiri.
 """)
 st.divider()
 
@@ -91,16 +90,18 @@ with col_input1:
         data_solar['Provinsi'].tolist(),
         key='provinsi_key' 
     )
+    # Ambil variabel provinsi_pilihan dari state, meskipun ini tidak kritis
+    # karena st.selectbox langsung mengembalikan nilainya.
 
 with col_input2:
-    st.number_input(
+    tagihan_input = st.number_input(
         "Tagihan Listrik per Bulan (Rp):", 
         min_value=10000, 
         value=st.session_state['tagihan_bulanan'], 
         step=50000,
         key='tagihan_bulanan' 
     )
-    tagihan_bulanan = st.session_state['tagihan_bulanan']
+    tagihan_bulanan = tagihan_input # Gunakan variabel lokal yang terikat pada input
 
 with col_input3:
     wp_pilihan = st.selectbox(
@@ -124,7 +125,7 @@ with col_input3:
     st.markdown(f"Kapasitas Total PV Anda: **{kapasitas_pv_kwp:.2f} kWp**")
 
 
-# --- BAGIAN 2: PROSES ALGORITMA ---
+# --- BAGIAN 2: PROSES ALGORITMA (Memastikan metrik dinamis) ---
 
 # A. Lookup Data Spesifik Lokasi
 data_lokasi = data_solar[data_solar['Provinsi'] == provinsi_pilihan].iloc[0]
@@ -144,45 +145,45 @@ skor_kemandirian = min(skor_kemandirian, 100)
 tagihan_baru = tagihan_bulanan - penghematan_rp
 if tagihan_baru < 0: tagihan_baru = 0
 
-# D. Hitung Output Kritis Jangka Panjang (Untuk Grafik Proyeksi)
+# D. Hitung Output Kritis Jangka Panjang (Untuk Grafik Proyeksi & Payback)
 biaya_instalasi_pv = kapasitas_pv_wp * BIAYA_AWAL_PV_PER_Wp
 biaya_kumulatif_tanpa_pv = []
 biaya_kumulatif_dengan_pv = []
+
+# Variabel yang akan diiterasi
 tagihan_bulanan_saat_ini = tagihan_bulanan
 tagihan_baru_saat_ini = tagihan_baru
+
+# Inisialisasi total biaya
 total_biaya_tanpa_pv = 0
-total_biaya_dengan_pv = biaya_instalasi_pv # Dimulai dengan biaya instalasi
+total_biaya_dengan_pv = biaya_instalasi_pv 
+
+payback_tahun = TAHUN_ANALISIS + 1 
 
 for tahun in range(1, TAHUN_ANALISIS + 1):
-    # Biaya Tanpa PV
+    # 1. Update total biaya kumulatif
     total_biaya_tanpa_pv += tagihan_bulanan_saat_ini * 12
-    biaya_kumulatif_tanpa_pv.append(total_biaya_tanpa_pv)
-    
-    # Biaya Dengan PV
     total_biaya_dengan_pv += tagihan_baru_saat_ini * 12
-    biaya_kumulatif_dengan_pv.append(total_biaya_dengan_pv)
     
-    # Naikkan Tarif (Asumsi Inflasi) untuk Tahun Berikutnya
+    biaya_kumulatif_tanpa_pv.append(total_biaya_tanpa_pv)
+    biaya_kumulatif_dengan_pv.append(total_biaya_dengan_pv)
+
+    # 2. Cek Payback (Hanya dilakukan sekali)
+    # Payback tercapai jika total biaya DENGAN PV sudah lebih kecil dari total biaya TANPA PV
+    if total_biaya_dengan_pv <= total_biaya_tanpa_pv and payback_tahun > TAHUN_ANALISIS:
+        payback_tahun = tahun
+    
+    # 3. Kenaikan Tarif (Asumsi Inflasi) untuk Tahun Berikutnya
     tagihan_bulanan_saat_ini *= (1 + ASUMSI_INFLASI_LISTRIK)
     tagihan_baru_saat_ini *= (1 + ASUMSI_INFLASI_LISTRIK)
 
-# Hitung Masa Balik Modal (Payback Period)
+# Hitungan Emisi Total Jangka Panjang untuk Tampilan
+emisi_total_ton = emisi_dicegah_total * 12 * TAHUN_ANALISIS / 1000 
 df_proyeksi = pd.DataFrame({
     'Tahun': range(1, TAHUN_ANALISIS + 1),
     'Tanpa PV': biaya_kumulatif_tanpa_pv,
     'Dengan PV': biaya_kumulatif_dengan_pv
 })
-# Titik di mana Biaya Dengan PV < Biaya Tanpa PV
-payback_row = df_proyeksi[df_proyeksi['Dengan PV'] <= df_proyeksi['Tanpa PV']]
-
-payback_tahun = TAHUN_ANALISIS
-if not payback_row.empty:
-    # Ambil tahun pertama di mana biaya sudah lebih rendah (Payback tercapai)
-    payback_tahun = payback_row['Tahun'].iloc[0]
-else:
-    # Jika tidak tercapai dalam 15 tahun, tampilkan > 15 tahun
-    if total_biaya_dengan_pv > total_biaya_tanpa_pv:
-        payback_tahun = TAHUN_ANALISIS + 1
 
 
 # E. VARIABEL KHUSUS UNTUK GRAFIK DONUT 
@@ -208,9 +209,10 @@ with m1:
 
 # 2. MASA BALIK MODAL
 with m2:
+    payback_display = f"{payback_tahun} Tahun" if payback_tahun <= TAHUN_ANALISIS else f"> {TAHUN_ANALISIS} Tahun"
     st.metric(
         "⏳ Masa Balik Modal", 
-        f"{payback_tahun:.1f} Tahun", 
+        payback_display, 
         help=f"Total biaya sistem PV adalah {format_rupiah(biaya_instalasi_pv)}"
     )
 
@@ -219,7 +221,7 @@ with m3:
     st.metric(
         "🌱 Emisi CO₂ Dicegah (Bln)", 
         f"{emisi_dicegah_total:.1f} kg", 
-        help=f"Total Emisi Dicegah selama {TAHUN_ANALISIS} tahun: {emisi_dicegah_total * 12 * TAHUN_ANALISIS / 1000:.1f} ton CO₂"
+        help=f"Total Emisi Dicegah selama {TAHUN_ANALISIS} tahun: {emisi_total_ton:.1f} ton CO₂"
     )
 
 # 4. SKOR KEMANDIRIAN
@@ -234,7 +236,8 @@ st.write("")
 
 # --- BAGIAN 4: VISUALISASI GRAFIK ---
 
-tab1, tab2, tab3 = st.tabs(["📉 Analisis Biaya & Kemandirian", "📈 Proyeksi Jangka Panjang", "ℹ️ Detail Teknis"])
+# Menambahkan Donut Chart kembali sebagai Tab 3, sehingga kini ada 4 Tab
+tab1, tab2, tab3, tab4 = st.tabs(["📉 Analisis Biaya Bulanan", "📈 Proyeksi Jangka Panjang", "🌍 Analisis Lingkungan (Emisi)", "ℹ️ Detail Teknis"])
 
 # GRAFIK 1: Analisis Biaya Bulanan (Grouped Bar Chart)
 with tab1:
@@ -247,17 +250,14 @@ with tab1:
     
     bar_chart = ax.bar(labels, nilai, color=['#34495e', '#2ecc71']) 
     
-    # Menambahkan Label Angka di Atas Bar (Menggunakan fungsi format_rupiah)
     ax.bar_label(bar_chart, labels=[format_rupiah(nilai[0]), format_rupiah(nilai[1])], padding=5)
     
-    # Menandai Penghematan (Teks di Tengah)
     if penghematan_rp > 0 and tagihan_baru < tagihan_bulanan:
         y_pos = (tagihan_bulanan + tagihan_baru) / 2
         ax.text(0.5, y_pos, f"Hemat: {format_rupiah(penghematan_rp)}",
                 ha='center', va='center', fontsize=12, 
                 bbox=dict(facecolor='yellow', alpha=0.5, edgecolor='none'))
     
-    # Setting
     ax.set_title('Perbandingan Tagihan Listrik: Sebelum vs Sesudah PV', fontsize=14, pad=15)
     ax.set_ylabel('Total Rupiah', fontsize=12)
     ax.set_ylim(0, max(tagihan_bulanan, tagihan_baru) * 1.2) 
@@ -270,22 +270,20 @@ with tab1:
     st.markdown(f"**Tingkat Kemandirian Energi** dari PV Anda: **{skor_kemandirian:.1f}%**")
     st.progress(int(skor_kemandirian))
 
-# GRAFIK 1.5: Proyeksi Jangka Panjang (Line Chart)
+# GRAFIK 2: Proyeksi Jangka Panjang (Line Chart)
 with tab2:
     st.subheader(f"Proyeksi Biaya Listrik Kumulatif Selama {TAHUN_ANALISIS} Tahun")
 
     fig_proj, ax_proj = plt.subplots(figsize=(10, 6))
 
-    # Plot Garis Kumulatif Tanpa PV
     ax_proj.plot(df_proyeksi['Tahun'], df_proyeksi['Tanpa PV'], 
                  label='Tanpa PV', color='#e74c3c', linewidth=2)
     
-    # Plot Garis Kumulatif Dengan PV
     ax_proj.plot(df_proyeksi['Tahun'], df_proyeksi['Dengan PV'], 
                  label='Dengan PV (Termasuk Biaya Instalasi)', color='#2ecc71', linewidth=2)
 
-    # Menandai Titik Payback (jika tercapai)
     if payback_tahun <= TAHUN_ANALISIS:
+        # Gunakan data dari df_proyeksi yang sudah dihitung
         payback_cost = df_proyeksi[df_proyeksi['Tahun'] == payback_tahun]['Dengan PV'].iloc[0]
         ax_proj.plot(payback_tahun, payback_cost, 'o', color='#3498db', markersize=8, label='Masa Balik Modal')
         ax_proj.annotate(f'{payback_tahun} Tahun', 
@@ -295,14 +293,12 @@ with tab2:
                          ha='center', 
                          fontsize=10)
 
-    # Setting
     ax_proj.set_title('Perbandingan Biaya Kumulatif Jangka Panjang', fontsize=14, pad=15)
     ax_proj.set_xlabel('Tahun Penggunaan', fontsize=12)
     ax_proj.set_ylabel('Total Biaya Kumulatif', fontsize=12)
     ax_proj.ticklabel_format(style='plain', axis='y')
     ax_proj.grid(axis='both', linestyle='--', alpha=0.5)
     
-    # Mengubah format Y-axis menjadi Rupiah Juta/Miliar
     y_tick_labels = [format_rupiah(y) for y in ax_proj.get_yticks()]
     ax_proj.set_yticklabels(y_tick_labels)
     
@@ -315,8 +311,48 @@ with tab2:
     * **Total Hemat Setelah {TAHUN_ANALISIS} Tahun:** {format_rupiah(total_biaya_tanpa_pv - total_biaya_dengan_pv)}
     """)
 
-# TAB 3: Detail Teknis (Layout Baru Scorecard)
+# GRAFIK 3: Analisis Emisi (Donut Chart) - DIKEMBALIKAN
 with tab3:
+    st.subheader("Porsi Pengurangan Jejak Karbon (CO₂)")
+    
+    labels_donut = ['Emisi Dicegah (Oleh PV)', 'Emisi Tersisa (Dari PLN)']
+    sizes_donut = [emisi_dicegah_grafik, emisi_tersisa_pln] 
+    
+    if emisi_awal_total == 0:
+        sizes_donut = [0, 1]
+    
+    colors_donut = ['#3498db', '#f1c40f']
+
+    fig2, ax2 = plt.subplots(figsize=(6, 6))
+    
+    def func_autopct(pct):
+        val = pct * emisi_awal_total / 100
+        if pct > 5: 
+            return f'{pct:.1f}%\n({val:.1f} kg)'
+        return ''
+        
+    wedges, texts, autotexts = ax2.pie(
+        sizes_donut, 
+        labels=labels_donut if emisi_awal_total > 0 else None, 
+        colors=colors_donut, 
+        autopct=func_autopct,
+        startangle=90, 
+        pctdistance=0.75, 
+        wedgeprops=dict(width=0.3) 
+    )
+    
+    centre_circle = plt.Circle((0,0),0.60,fc='white')
+    fig2.gca().add_artist(centre_circle)
+    ax2.axis('equal') 
+    
+    ax2.set_title(f'Total Jejak Karbon Awal: {emisi_awal_total:.1f} kg CO₂/Bulan', fontsize=14)
+    st.pyplot(fig2)
+    plt.close('all') 
+    
+    st.info(f"Dengan PV, Anda berhasil mengurangi emisi sebesar **{emisi_dicegah_grafik:.1f} kg CO₂** dari konsumsi rumah Anda.")
+
+# TAB 4: Detail Teknis (Layout Baru Scorecard) - PINDAH KE TAB 4
+with tab4:
     col_tech1, col_tech2 = st.columns(2)
     
     # BOX 1: Sistem & Energi
@@ -325,7 +361,6 @@ with tab3:
         st.markdown("Ringkasan teknis instalasi dan produksi energi.")
         st.write("---")
         
-        # Data Struktur Sistem
         data_sistem = pd.DataFrame({
             "Keterangan": [
                 "Kapasitas PV Total",
@@ -348,23 +383,19 @@ with tab3:
         st.markdown("Rincian hitungan biaya dan manfaat lingkungan.")
         st.write("---")
         
-        # Data Struktur Finansial
-        # Hitungan Emisi Total Jangka Panjang
-        emisi_total_ton = emisi_dicegah_total * 12 * TAHUN_ANALISIS / 1000 
-        
         data_finansial = pd.DataFrame({
             "Keterangan": [
                 "Biaya Instalasi Awal",
                 "Tagihan Bulanan Baru",
                 "Penghematan Bulanan",
                 "Masa Balik Modal",
-                "Total Emisi Dicegah (15 Thn)"
+                f"Total Emisi Dicegah ({TAHUN_ANALISIS} Thn)"
             ],
             "Nilai": [
                 format_rupiah(biaya_instalasi_pv),
                 format_rupiah(tagihan_baru),
                 format_rupiah(penghematan_rp),
-                f"{payback_tahun:.1f} tahun",
+                payback_display,
                 f"{emisi_total_ton:.1f} ton CO₂"
             ]
         }).set_index('Keterangan')
