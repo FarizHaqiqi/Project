@@ -4,196 +4,243 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
-# --- 1. KONFIGURASI DASAR & TEMA ---
+# --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
-    page_title="Solar Eco-Cost Analyzer Pro",
+    page_title="Eco-Cost Analyzer", 
     page_icon="☀️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# --- 2. STYLE CSS CUSTOM (Mempercantik UI) ---
+# --- 2. CUSTOM CSS (Untuk Tampilan Lebih Cantik) ---
 st.markdown("""
 <style>
-    .main { background-color: #f9fbfd; }
-    .stMetric { 
-        background-color: #ffffff; 
-        padding: 20px; 
-        border-radius: 15px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        border: 1px solid #edf2f7;
+    /* Mengubah background aplikasi */
+    .stApp {
+        background: linear-gradient(to bottom right, #f8f9fa, #e9ecef);
     }
-    .hero-container {
-        background: linear-gradient(135deg, #1a365d 0%, #2a4365 100%);
-        color: white;
-        padding: 3rem;
-        border-radius: 20px;
-        margin-bottom: 2rem;
-        text-align: center;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-    }
-    .provinsi-card {
-        background-color: #ebf8ff;
-        padding: 1.5rem;
+    
+    /* Style untuk Banner */
+    .hero-banner {
+        background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1509391366360-2e959784a276?q=80&w=2072');
+        background-size: cover;
+        background-position: center;
+        padding: 50px;
         border-radius: 15px;
-        border-left: 6px solid #3182ce;
-        margin-top: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+        color: white;
+    }
+    
+    /* Info Box Style */
+    .info-box {
+        background-color: white;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #2ecc71;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. KONSTANTA SISTEM ---
+# --- 3. KONSTANTA PROYEK ---
 TARIF_PLN = 1400 
-FILE_DATA = 'produksi_emisi_provinsi.csv'
-WP_CHOICES = [300, 350, 400, 450, 500, 550] # Dibatasi sampai 550Wp
-MAX_MODUL = 50 # Dibatasi sampai 50 modul
-BIAYA_PER_WP = 15000 
-INFLASI_LISTRIK = 0.05
-TAHUN_ANALISIS = 15
+FILE_DATA = 'produksi_emisi_provinsi.csv' 
+# REQUEST: Batasi Wp sampai 550
+WP_CHOICES = [300, 350, 400, 450, 500, 550] 
+MIN_PV_MODULES = 1 
+# REQUEST: Batasi modul sampai 50
+MAX_PV_MODULES = 50 
+TAHUN_ANALISIS = 15 
+ASUMSI_INFLASI_LISTRIK = 0.05 
+BIAYA_AWAL_PV_PER_Wp = 15000 
 
-# --- 4. FUNGSI PENGOLAH DATA ---
-def format_rp(angka):
-    if angka >= 1e9: return f"Rp {angka/1e9:,.2f} Milyar"
-    if angka >= 1e6: return f"Rp {angka/1e6:,.1f} Juta"
-    return f"Rp {angka:,.0f}"
+# --- 4. FUNGSI UTILITY ---
+def format_rupiah(x):
+    if x >= 1e9: return f"Rp {x/1e9:,.2f} M"
+    if x >= 1e6: return f"Rp {x/1e6:,.1f} Jt"
+    return f"Rp {x:,.0f}"
 
 @st.cache_data
-def get_clean_data(path):
+def load_data(file_path):
     try:
-        df = pd.read_csv(path, sep=None, engine='python')
-        # Pembersihan otomatis kolom
-        if df.columns[0].lower() in ['no', 'no.']: df = df.drop(df.columns[0], axis=1)
-        df.columns = ['Provinsi', 'Radiasi', 'Emisi']
-        # Pastikan angka bersih dari karakter string
-        for col in ['Radiasi', 'Emisi']:
-            if df[col].dtype == 'O':
-                df[col] = df[col].str.replace(',', '.').str.extract(r'(\d+\.?\d*)').astype(float)
-        return df.dropna()
+        df = pd.read_csv(file_path, delimiter=',')
+        if len(df.columns) <= 2:
+            df = pd.read_csv(file_path, delimiter=';')
+        
+        if df.columns[0].lower() in ['no', 'no.']:
+            df = df.iloc[:, 1:].copy() 
+            
+        df.columns = ['Provinsi', 'Produksi_Harian_kWh', 'Faktor_Emisi_kg_per_kWh']
+        
+        for col in ['Produksi_Harian_kWh', 'Faktor_Emisi_kg_per_kWh']:
+            if df[col].dtype == object: 
+                df[col] = df[col].astype(str).str.replace(',', '.', regex=True)
+                df[col] = df[col].astype(str).str.replace(' kWh/kWp', '', regex=False) 
+            df[col] = pd.to_numeric(df[col], errors='coerce') 
+
+        df.dropna(inplace=True) 
+        return df
     except Exception as e:
-        st.error(f"Gagal memuat database: {e}")
+        st.error(f"Error fatal: {e}")
         return pd.DataFrame()
 
-# --- 5. LOGIKA APLIKASI UTAMA ---
-df_solar = get_clean_data(FILE_DATA)
+data_solar = load_data(FILE_DATA)
+if data_solar.empty: st.stop()
 
-if df_solar.empty:
-    st.warning("Database tidak ditemukan. Pastikan file 'produksi_emisi_provinsi.csv' ada di folder yang sama.")
-    st.stop()
-
-# --- HEADER SECTION ---
+# --- 5. HEADER & BANNER ---
 st.markdown("""
-<div class="hero-container">
-    <h1 style='color: white; margin: 0;'>☀️ Solar Eco-Cost Analyzer</h1>
-    <p style='font-size: 1.2rem; opacity: 0.9;'>Optimalkan Penghematan Listrik & Reduksi Emisi Karbon Anda</p>
-</div>
+    <div class="hero-banner">
+        <h1 style='color: white;'>☀️ Solar Eco-Cost Analyzer</h1>
+        <p>Hitung Potensi Hemat Biaya & Jejak Karbon Anda Sekarang</p>
+    </div>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR & INPUT ---
-with st.sidebar:
-    st.header("👤 Konfigurasi Pengguna")
-    provinsi = st.selectbox("Pilih Provinsi Anda:", df_solar['Provinsi'].unique())
-    tagihan_bln = st.number_input("Tagihan Listrik (Rp/Bulan):", min_value=50000, value=500000, step=50000)
+# --- 6. INPUT USER & INFO WILAYAH ---
+st.subheader("⚙️ Parameter Instalasi")
+col_input, col_info = st.columns([2, 1])
+
+with col_input:
+    c1, c2 = st.columns(2)
+    with c1:
+        provinsi_pilihan = st.selectbox("📍 Pilih Lokasi:", data_solar['Provinsi'].tolist())
+        tagihan_input = st.number_input("💸 Tagihan Listrik (Rp/Bulan):", min_value=10000, value=500000, step=50000)
     
-    st.divider()
-    st.header("🔌 Spesifikasi Panel")
-    wp_val = st.select_slider("Kapasitas per Modul (Wp):", options=WP_CHOICES, value=550)
-    jml_modul = st.number_input("Jumlah Modul PV (Maks 50):", min_value=1, max_value=MAX_MODUL, value=4)
-    
-    # Detail teknis instan di sidebar
-    total_kwp = (wp_val * jml_modul) / 1000
-    st.success(f"Total Kapasitas: **{total_kwp:.2f} kWp**")
+    with c2:
+        wp_pilihan = st.selectbox("⚡ Kapasitas Panel (Wp):", WP_CHOICES, index=len(WP_CHOICES)-1)
+        # REQUEST: Max value 50
+        jumlah_modul = st.number_input("📦 Jumlah Modul (Max 50):", min_value=1, max_value=MAX_PV_MODULES, value=4)
 
-# --- DATA LOOKUP ---
-data_prov = df_solar[df_solar['Provinsi'] == provinsi].iloc[0]
-val_radiasi = data_prov['Radiasi']
-val_emisi = data_prov['Emisi']
+# LOOKUP DATA
+data_lokasi = data_solar[data_solar['Provinsi'] == provinsi_pilihan].iloc[0]
+radiasi_harian = data_lokasi['Produksi_Harian_kWh']
+faktor_emisi_lokal = data_lokasi['Faktor_Emisi_kg_per_kWh']
 
-# --- PERHITUNGAN INTI ---
-konsumsi_kwh_bln = tagihan_bln / TARIF_PLN
-produksi_kwh_bln = val_radiasi * total_kwp * 30
-hemat_rp_bln = produksi_kwh_bln * TARIF_PLN
-skor_mandiri = min((produksi_kwh_bln / konsumsi_kwh_bln) * 100, 100)
-tagihan_setelah_pv = max(tagihan_bln - hemat_rp_bln, 0)
-
-biaya_investasi = (wp_val * jml_modul) * BIAYA_PER_WP
-emisi_dicegah_bln = produksi_kwh_bln * val_emisi
-
-# Kalkulasi ROI/Payback
-list_tanpa_pv = []
-list_dengan_pv = [biaya_investasi]
-total_tanpa = 0
-total_dengan = biaya_investasi
-tahun_balik_modal = "Belum Tercapai"
-
-for thn in range(1, TAHUN_ANALISIS + 1):
-    inflasi = (1 + INFLASI_LISTRIK)**thn
-    total_tanpa += (tagihan_bln * 12) * inflasi
-    total_dengan += (tagihan_setelah_pv * 12) * inflasi
-    list_tanpa_pv.append(total_tanpa)
-    list_dengan_pv.append(total_dengan)
-    if total_dengan <= total_tanpa and tahun_balik_modal == "Belum Tercapai":
-        tahun_balik_modal = f"{thn} Tahun"
-
-# --- TAMPILAN DASHBOARD ---
-col_main, col_info = st.columns([2.5, 1])
-
-with col_main:
-    # Row 1: Metrics
-    m1, m2, m3 = st.columns(3)
-    m1.metric("💰 Penghematan/Bulan", format_rp(hemat_rp_bln))
-    m2.metric("🌱 Reduksi CO2/Bulan", f"{emisi_dicegah_bln:.2f} kg")
-    m3.metric("⏳ Masa Balik Modal", tahun_balik_modal)
-    
-    # Row 2: Tabs
-    t1, t2, t3 = st.tabs(["📊 Analisis Grafik", "🌳 Dampak Lingkungan", "📑 Detail Biaya"])
-    
-    with t1:
-        st.subheader("Proyeksi Pengeluaran Kumulatif (15 Tahun)")
-        df_lirik = pd.DataFrame({
-            'Tahun': range(1, TAHUN_ANALISIS + 1),
-            'Tanpa PV': list_tanpa_pv,
-            'Dengan PV': list_dengan_pv[1:]
-        })
-        fig_lirik = px.line(df_lirik, x='Tahun', y=['Tanpa PV', 'Dengan PV'], 
-                             markers=True, color_discrete_sequence=['#e53e3e', '#38a169'])
-        fig_lirik.update_layout(yaxis_title="Rupiah", plot_bgcolor='white')
-        st.plotly_chart(fig_lirik, use_container_width=True)
-
-    with t2:
-        c_don, c_txt = st.columns([1, 1])
-        with c_don:
-            # Donut Chart Modern
-            emisi_total_awal = konsumsi_kwh_bln * val_emisi
-            fig_don = go.Figure(data=[go.Pie(
-                labels=['Emisi Berhasil Dicegah', 'Sisa Emisi Grid'],
-                values=[emisi_dicegah_bln, max(emisi_total_awal - emisi_dicegah_bln, 0)],
-                hole=.6,
-                marker_colors=['#48bb78', '#edf2f7']
-            )])
-            fig_don.update_layout(showlegend=False, annotations=[dict(text=f"{skor_mandiri:.0f}%", x=0.5, y=0.5, font_size=30, showarrow=False, font_color='#2f855a')])
-            st.plotly_chart(fig_don, use_container_width=True)
-        with c_txt:
-            st.markdown(f"### Kemandirian Energi: **{skor_mandiri:.1f}%**")
-            st.write(f"Sistem Anda mampu mencegah emisi sebesar **{emisi_dicegah_bln:.2f} kg CO2** setiap bulan.")
-            st.info(f"Ini setara dengan menanam **{int(emisi_dicegah_bln/20)} pohon dewasa** per bulan!")
-
-    with t3:
-        data_tabel = {
-            "Deskripsi": ["Investasi Awal", "Kapasitas Terpasang", "Estimasi Produksi", "Total Hemat 15 Thn"],
-            "Nilai": [format_rp(biaya_investasi), f"{total_kwp:.2f} kWp", f"{produksi_kwh_bln:.2f} kWh/Bulan", format_rp(hemat_rp_bln * 12 * 15)]
-        }
-        st.table(pd.DataFrame(data_tabel))
-
+# REQUEST: Tampilkan PV Out dan Faktor Emisi
 with col_info:
     st.markdown(f"""
-    <div class="provinsi-card">
-        <h3 style='margin-top:0;'>📍 Detail Wilayah</h3>
-        <p><b>Provinsi:</b><br>{provinsi}</p>
-        <hr>
-        <p>☀️ <b>PV Out (Potensi):</b><br>{val_radiasi} kWh/kWp/hari</p>
-        <hr>
-        <p>🏭 <b>Faktor Emisi:</b><br>{val_emisi} kg CO2/kWh</p>
+    <div class="info-box">
+        <h4 style="margin-top:0;">📊 Data Wilayah: {provinsi_pilihan}</h4>
+        <p><b>☀️ Potensi Surya (PV Out):</b><br>{radiasi_harian} kWh/kWp/hari</p>
+        <p><b>🏭 Faktor Emisi Grid:</b><br>{faktor_emisi_lokal} kg CO₂/kWh</p>
     </div>
     """, unsafe_allow_html=True)
+
+# --- 7. PROSES ALGORITMA (LOGIKA ASLI DIPERTAHANKAN) ---
+kapasitas_pv_wp = wp_pilihan * jumlah_modul
+kapasitas_pv_kwp = kapasitas_pv_wp / 1000.0
+tagihan_bulanan = tagihan_input
+
+konsumsi_kwh = tagihan_bulanan / TARIF_PLN
+produksi_pv_harian = radiasi_harian * kapasitas_pv_kwp 
+produksi_pv_bulanan = produksi_pv_harian * 30
+
+penghematan_rp = produksi_pv_bulanan * TARIF_PLN
+emisi_dicegah_total = produksi_pv_bulanan * faktor_emisi_lokal 
+skor_kemandirian = min((produksi_pv_bulanan / konsumsi_kwh) * 100, 100) 
+tagihan_baru = max(tagihan_bulanan - penghematan_rp, 0)
+
+# Payback Calculation
+biaya_instalasi_pv = kapasitas_pv_wp * BIAYA_AWAL_PV_PER_Wp
+biaya_kumulatif_tanpa_pv = []
+biaya_kumulatif_dengan_pv = []
+total_biaya_tanpa_pv = 0
+total_biaya_dengan_pv = biaya_instalasi_pv 
+payback_tahun = TAHUN_ANALISIS + 1 
+
+tagihan_curr = tagihan_bulanan
+tagihan_baru_curr = tagihan_baru
+
+for tahun in range(1, TAHUN_ANALISIS + 1):
+    tagihan_curr *= (1 + ASUMSI_INFLASI_LISTRIK)
+    tagihan_baru_curr *= (1 + ASUMSI_INFLASI_LISTRIK)
     
-    st.warning(f"**Info:** Perhitungan menggunakan asumsi kenaikan tarif listrik {INFLASI_LISTRIK*100}% per tahun.")
+    total_biaya_tanpa_pv += tagihan_curr * 12
+    total_biaya_dengan_pv += tagihan_baru_curr * 12
+
+    biaya_kumulatif_tanpa_pv.append(total_biaya_tanpa_pv)
+    biaya_kumulatif_dengan_pv.append(total_biaya_dengan_pv)
+
+    if total_biaya_dengan_pv <= total_biaya_tanpa_pv and payback_tahun > TAHUN_ANALISIS:
+        payback_tahun = tahun
+    
+emisi_total_ton = emisi_dicegah_total * 12 * TAHUN_ANALISIS / 1000 
+df_proyeksi = pd.DataFrame({'Tahun': range(1, TAHUN_ANALISIS + 1),'Tanpa PV': biaya_kumulatif_tanpa_pv,'Dengan PV': biaya_kumulatif_dengan_pv})
+
+# Data Donut
+emisi_awal_total = konsumsi_kwh * faktor_emisi_lokal 
+emisi_dicegah_grafik = min(emisi_dicegah_total, emisi_awal_total) 
+emisi_tersisa_pln = emisi_awal_total - emisi_dicegah_grafik
+
+# --- 8. DASHBOARD METRIC ---
+st.write("---")
+m1, m2, m3, m4 = st.columns(4)
+with m1: st.metric("💰 Hemat Biaya/Bulan", format_rupiah(penghematan_rp), delta=f"Tagihan Baru: {format_rupiah(tagihan_baru)}")
+with m2: st.metric("⏳ Balik Modal", f"{payback_tahun} Tahun" if payback_tahun <= TAHUN_ANALISIS else "> 15 Tahun")
+with m3: st.metric("🌱 Reduksi CO₂/Bulan", f"{emisi_dicegah_total:.1f} kg")
+with m4: st.metric("⚡ Kemandirian Energi", f"{skor_kemandirian:.1f}%")
+
+# --- 9. VISUALISASI ---
+st.write("")
+tab1, tab2, tab3, tab4 = st.tabs(["📉 Grafik Biaya", "📈 Proyeksi ROI", "🌍 Analisis Emisi", "ℹ️ Detail Teknis"])
+
+with tab1:
+    st.subheader("Perbandingan Tagihan Listrik")
+    fig_bar = px.bar(
+        x=['Sebelum PV', 'Sesudah PV'], 
+        y=[tagihan_bulanan, tagihan_baru],
+        text=[format_rupiah(tagihan_bulanan), format_rupiah(tagihan_baru)],
+        color=['Sebelum PV', 'Sesudah PV'],
+        color_discrete_map={'Sebelum PV': '#34495e', 'Sesudah PV': '#2ecc71'}
+    )
+    fig_bar.update_layout(showlegend=False, xaxis_title="", yaxis_title="Rupiah")
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+with tab2:
+    st.subheader("Kapan Modal Anda Kembali?")
+    df_melt = df_proyeksi.melt('Tahun', var_name='Skenario', value_name='Total Biaya')
+    fig_line = px.line(df_melt, x='Tahun', y='Total Biaya', color='Skenario', markers=True,
+                       color_discrete_map={'Tanpa PV': '#e74c3c', 'Dengan PV': '#2ecc71'})
+    if payback_tahun <= TAHUN_ANALISIS:
+        val_pb = df_proyeksi.loc[df_proyeksi['Tahun'] == payback_tahun, 'Dengan PV'].values[0]
+        fig_line.add_scatter(x=[payback_tahun], y=[val_pb], mode='markers', marker=dict(size=12, color='blue'), name='Titik Balik Modal')
+    fig_line.update_layout(yaxis_tickformat=",.0f")
+    st.plotly_chart(fig_line, use_container_width=True)
+
+with tab3:
+    col_pie, col_desc = st.columns([1.5, 1])
+    with col_pie:
+        # REQUEST: Donut Chart yang lebih bagus (Pakai Plotly, bukan Matplotlib)
+        labels = ['Dicegah (PV)', 'Sisa (PLN)']
+        values = [emisi_dicegah_grafik, emisi_tersisa_pln]
+        
+        fig_donut = go.Figure(data=[go.Pie(
+            labels=labels, values=values, hole=.6, 
+            marker_colors=['#2ecc71', '#bdc3c7'],
+            textinfo='percent', hoverinfo="label+value+percent"
+        )])
+        fig_donut.update_layout(title_text="Proporsi Pengurangan Emisi", margin=dict(t=30, b=0, l=0, r=0))
+        # Text di tengah donut
+        fig_donut.add_annotation(text=f"{skor_kemandirian:.0f}%", x=0.5, y=0.5, font_size=24, showarrow=False, font_color="#27ae60")
+        st.plotly_chart(fig_donut, use_container_width=True)
+        
+    with col_desc:
+        st.info(f"Sistem Anda mencegah **{emisi_dicegah_total:.1f} kg CO₂** per bulan.")
+        st.write("Ini setara dengan:")
+        st.write(f"🌳 Menanam **{int(emisi_dicegah_total/20)} pohon**")
+        st.write(f"🚗 Menghindari perjalanan mobil sejauh **{int(emisi_dicegah_total*5)} km**")
+
+with tab4:
+    # REQUEST: Detail teknis jangan hilang
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("### ⚙️ Spesifikasi Sistem")
+        st.table(pd.DataFrame({
+            "Parameter": ["Kapasitas Total", "Jumlah Modul", "Jenis Panel", "Produksi Energi"],
+            "Nilai": [f"{kapasitas_pv_kwp:.2f} kWp", f"{jumlah_modul} Unit", f"{wp_pilihan} Wp", f"{produksi_pv_bulanan:.2f} kWh/bln"]
+        }).set_index('Parameter'))
+    with c2:
+        st.markdown("### 💸 Analisis Finansial")
+        st.table(pd.DataFrame({
+            "Parameter": ["Investasi Awal", "Penghematan/Bulan", "Total Hemat (15 Thn)", "ROI"],
+            "Nilai": [format_rupiah(biaya_instalasi_pv), format_rupiah(penghematan_rp), format_rupiah(total_biaya_tanpa_pv - total_biaya_dengan_pv), f"{payback_tahun} Tahun"]
+        }).set_index('Parameter'))
