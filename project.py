@@ -6,22 +6,21 @@ import plotly.graph_objects as go
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
-    page_title="Eco-Cost Analyzer Pro",
+    page_title="Eco-Cost Analyzer",
     layout="wide",
     page_icon="☀️",
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CUSTOM CSS (MODERN UI & PROFESSIONAL LOOK) ---
+# --- 2. CUSTOM CSS (MODERN UI, THEME FRIENDLY & FIX FONT COLOR) ---
 st.markdown("""
 <style>
     /* IMPORT FONTS */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@500;700&display=swap');
 
-    /* GLOBAL THEME */
+    /* GLOBAL THEME FIXES */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        color: #1e293b;
     }
     
     h1, h2, h3 {
@@ -29,104 +28,73 @@ st.markdown("""
         font-weight: 700;
     }
 
-    /* BACKGROUND GRADIENT */
-    .stApp {
-        background: linear-gradient(to bottom right, #f8fafc, #eef2f6);
-    }
-
-    /* 1. HERO BANNER RE-DESIGN */
-    .hero-container {
-        position: relative;
-        background-image: linear-gradient(120deg, rgba(16, 185, 129, 0.9), rgba(15, 23, 42, 0.9)), 
-                          url('https://images.unsplash.com/photo-1509391366360-2e959784a276?q=80&w=2072');
-        background-size: cover;
+    /* 1. HERO BANNER */
+    .hero-banner {
+        background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1509391366360-2e959784a276?q=80&w=2072');
+        height: 300px;
         background-position: center;
-        border-radius: 20px;
-        padding: 60px 40px;
-        color: white;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-        text-align: center;
-    }
-    .hero-title {
-        font-size: 3rem;
-        font-weight: 800;
-        margin-bottom: 15px;
-        letter-spacing: -1px;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    .hero-subtitle {
-        font-size: 1.2rem;
-        opacity: 0.9;
-        font-weight: 400;
-        max-width: 700px;
-        margin: 0 auto;
-    }
-
-    /* 2. CARD CONTAINER STYLE (Untuk Input & Info) */
-    .card-style {
-        background-color: white;
-        padding: 25px;
+        background-size: cover;
         border-radius: 15px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        padding: 20px;
     }
     
-    /* 3. METRIC BOX STYLING (OVERRIDE STREAMLIT DEFAULT) */
+    /* Memastikan teks Hero Banner SELALU Putih (karena background gelap) */
+    .hero-banner h1 {
+        color: #ffffff !important;
+        font-size: 2.2rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        margin-bottom: 10px;
+    }
+    .hero-banner p {
+        color: #e2e8f0 !important;
+        font-size: 1.1rem;
+        max-width: 800px;
+    }
+
+    /* 2. CARD CONTAINER STYLE (Fixed Font Color for Light Cards) */
+    .card-style {
+        background-color: var(--secondary-background-color);
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        margin-bottom: 20px;
+    }
+
+    /* 3. METRIC BOX STYLING */
     div[data-testid="stMetric"] {
-        background-color: white;
-        padding: 20px;
-        border-radius: 12px;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-        transition: transform 0.2s;
-    }
-    div[data-testid="stMetric"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px rgba(0,0,0,0.05);
-        border-color: #10b981;
-    }
-    div[data-testid="stMetricLabel"] {
-        font-size: 0.9rem;
-        color: #64748b;
-        font-weight: 600;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 1.6rem;
-        color: #0f172a;
-        font-weight: 700;
+        background-color: var(--secondary-background-color);
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid rgba(128, 128, 128, 0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
 
     /* 4. INFO BOX WILAYAH */
     .info-box-modern {
-        background-color: #eff6ff;
+        background-color: rgba(59, 130, 246, 0.1); /* Biru transparan */
         border-left: 4px solid #3b82f6;
         padding: 15px;
-        border-radius: 0 8px 8px 0;
-        color: #1e3a8a;
-        font-size: 0.9rem;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+    /* Pastikan teks di info box mengikuti warna tema (dark/light mode friendly) */
+    .info-box-modern strong {
+        color: var(--text-color);
+    }
+    .info-box-modern span {
+        color: var(--text-color);
+        opacity: 0.8;
     }
 
-    /* 5. TABS CUSTOMIZATION */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        background-color: transparent;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: white;
-        border-radius: 8px;
-        padding: 10px 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border: 1px solid #e2e8f0;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #10b981 !important;
-        color: white !important;
-        border: 1px solid #10b981 !important;
-    }
-
-    /* HIDE DEFAULT STREAMLIT MENU */
+    /* HIDE DEFAULT MENU */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -183,11 +151,11 @@ if data_solar.empty:
     st.stop()
 
 
-# --- 5. HEADER (NEW DESIGN) ---
+# --- 5. HEADER (TEXT ASLI SESUAI PERMINTAAN) ---
 st.markdown("""
-    <div class="hero-container">
-        <div class="hero-title">Solar Energy Analyzer</div>
-        <div class="hero-subtitle">Simulasi cerdas penghematan biaya listrik dan pengurangan jejak karbon untuk hunian masa depan Anda.</div>
+    <div class="hero-banner">
+        <h1>☀️ Analisis Penghematan Biaya dan Pengurangan Emisi Ketika Menggunakan PV Rumahan</h1>
+        <p>Aplikasi ini membantu Anda menghitung potensi <b>penghematan biaya listrik (Rp)</b> dan <b>dampak lingkungan (emisi CO2)</b> dengan beralih ke energi surya mandiri.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -200,15 +168,14 @@ if 'pv_module_count' not in st.session_state: st.session_state['pv_module_count'
 
 # Container styling
 st.markdown('<div class="card-style">', unsafe_allow_html=True)
-st.markdown("### 🛠️ Konfigurasi Sistem")
-st.write("Sesuaikan parameter instalasi di bawah ini untuk melihat potensi penghematan.")
+st.subheader("⚙️ Data Input dan Instalasi")
+st.write("")
 
-col_input1, col_input2, col_input3 = st.columns(3, gap="large")
+col_input1, col_input2, col_input3 = st.columns(3, gap="medium")
 
 with col_input1:
-    st.markdown("##### 📍 Lokasi")
     provinsi_pilihan = st.selectbox(
-        "Pilih Provinsi Domisili", 
+        "Pilih Lokasi (Provinsi):", 
         data_solar['Provinsi'].tolist(),
         key='provinsi_key' 
     )
@@ -217,18 +184,18 @@ with col_input1:
     radiasi_harian = data_lokasi['Produksi_Harian_kWh']
     faktor_emisi_lokal = data_lokasi['Faktor_Emisi_kg_per_kWh']
     
+    # Info Box Modern (Text color adapts to theme)
     st.markdown(f"""
     <div class="info-box-modern">
         <strong>Data Wilayah: {provinsi_pilihan}</strong><br>
-        <span style="font-size:0.8em; color: #64748b;">Potensi PV: {radiasi_harian} kWh/kWp</span><br>
-        <span style="font-size:0.8em; color: #64748b;">Emisi Grid: {faktor_emisi_lokal} kg/kWh</span>
+        <span>☀️ PV Out: {radiasi_harian} kWh/kWp</span><br>
+        <span>🏭 Emisi Grid: {faktor_emisi_lokal} kg/kWh</span>
     </div>
     """, unsafe_allow_html=True)
 
 with col_input2:
-    st.markdown("##### 💵 Tagihan Listrik")
     tagihan_input = st.number_input(
-        "Rata-rata Tagihan per Bulan (Rp)", 
+        "Tagihan Listrik per Bulan (Rp):", 
         min_value=10000, 
         value=st.session_state['tagihan_bulanan'], 
         step=50000,
@@ -238,16 +205,15 @@ with col_input2:
     tagihan_bulanan = tagihan_input 
 
 with col_input3:
-    st.markdown("##### ☀️ Spesifikasi Panel")
     wp_pilihan = st.selectbox(
-        "Kapasitas per Modul (Wp)",
+        "Pilih Kapasitas 1 Modul PV (Watt Peak/Wp):",
         WP_CHOICES,
         index=WP_CHOICES.index(550),
         key='pv_module_watt'
     )
     
     jumlah_modul = st.number_input(
-        "Jumlah Modul",
+        "Jumlah Modul PV yang Dipasang:",
         min_value=MIN_PV_MODULES,
         max_value=MAX_PV_MODULES,
         value=st.session_state['pv_module_count'],
@@ -258,12 +224,12 @@ with col_input3:
     kapasitas_pv_wp = wp_pilihan * jumlah_modul
     kapasitas_pv_kwp = kapasitas_pv_wp / 1000.0
     
-    st.caption(f"Total Kapasitas Terpasang: **{kapasitas_pv_kwp:.2f} kWp**")
+    st.info(f"Kapasitas Total PV Anda: **{kapasitas_pv_kwp:.2f} kWp**")
 
 st.markdown('</div>', unsafe_allow_html=True) # End Card
 
 
-# --- BAGIAN 2: PROSES ALGORITMA (ASLI) ---
+# --- BAGIAN 2: PROSES ALGORITMA (ASLI - TIDAK DIUBAH) ---
 
 konsumsi_kwh = tagihan_bulanan / TARIF_PLN
 produksi_pv_harian = radiasi_harian * kapasitas_pv_kwp 
@@ -313,114 +279,97 @@ emisi_dicegah_grafik = min(emisi_dicegah_total, emisi_awal_total)
 emisi_tersisa_pln = emisi_awal_total - emisi_dicegah_grafik
 
 
-# --- BAGIAN 3: OUTPUT DASHBOARD METRIC (RE-STYLED) ---
+# --- BAGIAN 3: OUTPUT DASHBOARD METRIC ---
 
-st.header(f"📊 Hasil Analisis Dampak")
-st.write("")
+st.divider()
+st.header(f"📊 Hasil Analisis Dampak untuk {provinsi_pilihan}")
 
 m1, m2, m3, m4 = st.columns(4)
 
 with m1:
     st.metric(
-        "💰 Hemat Bulanan", 
+        "💰 Hemat Biaya Bulanan", 
         f"{format_rupiah(int(penghematan_rp))}", 
-        delta=f"Sisa Tagihan: {format_rupiah(int(tagihan_baru))}",
-        delta_color="normal" # Hijau jika positif (default)
+        delta=f"Tagihan Akhir: {format_rupiah(int(tagihan_baru))}"
     )
 
 with m2:
     payback_display = f"{payback_tahun} Tahun" if payback_tahun <= TAHUN_ANALISIS else f"> {TAHUN_ANALISIS} Tahun"
     st.metric(
-        "⏳ Balik Modal (ROI)", 
+        "⏳ Masa Balik Modal", 
         payback_display, 
-        help=f"Investasi Awal: {format_rupiah(biaya_instalasi_pv)}"
+        help=f"Total biaya sistem PV adalah {format_rupiah(biaya_instalasi_pv)}"
     )
 
 with m3:
     st.metric(
-        "🌱 Reduksi CO₂/Bln", 
+        "🌱 Emisi CO₂ Dicegah (Bln)", 
         f"{emisi_dicegah_total:.1f} kg", 
-        delta=f"Total 15 Thn: {emisi_total_ton:.1f} Ton",
-        delta_color="off"
+        help=f"Total Emisi Dicegah selama {TAHUN_ANALISIS} tahun: {emisi_total_ton:.1f} ton CO₂"
     )
 
 with m4:
     st.metric(
-        "⚡ Kemandirian Energi", 
+        "⚡ Skor Kemandirian Energi", 
         f"{skor_kemandirian:.1f}%", 
-        help="Persentase kebutuhan listrik yang disuplai mandiri."
+        help="Persentase kebutuhan listrik bulanan yang dipenuhi PV Anda."
     )
 
-st.write("---") 
+st.write("") 
 
-# --- BAGIAN 4: VISUALISASI GRAFIK (PROFESSIONAL THEME) ---
+# --- BAGIAN 4: VISUALISASI GRAFIK ---
 
-tab1, tab2, tab3, tab4 = st.tabs(["📉 Biaya & Hemat", "📈 Proyeksi ROI", "🌍 Emisi Lingkungan", "ℹ️ Rincian Teknis"])
+tab1, tab2, tab3, tab4 = st.tabs(["📉 Analisis Biaya Bulanan", "📈 Proyeksi Jangka Panjang", "🌍 Analisis Lingkungan (Emisi)", "ℹ️ Detail Teknis"])
 
-# THEME COLORS
-COLOR_PRIMARY = "#10b981" # Emerald Green
-COLOR_SECONDARY = "#334155" # Slate
-COLOR_ACCENT = "#3b82f6" # Blue
+# KONFIGURASI WARNA CHART AGAR AMAN DI SEMUA TEMA
+CHART_THEME = "streamlit" # Menggunakan tema bawaan Streamlit agar font menyesuaikan
 
 # GRAFIK 1: Analisis Biaya Bulanan
 with tab1:
-    col_chart, col_text = st.columns([2, 1])
-    with col_chart:
-        data_biaya = pd.DataFrame({
-            'Kategori': ['Tagihan Lama', 'Tagihan Baru'],
-            'Rupiah': [tagihan_bulanan, tagihan_baru],
-            'Teks': [format_rupiah(tagihan_bulanan), format_rupiah(tagihan_baru)]
-        })
-        
-        fig_bar = px.bar(
-            data_biaya, 
-            x='Kategori', 
-            y='Rupiah', 
-            text='Teks', 
-            color='Kategori',
-            color_discrete_map={'Tagihan Lama': COLOR_SECONDARY, 'Tagihan Baru': COLOR_PRIMARY},
-        )
-        
-        fig_bar.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            yaxis_title="", 
-            xaxis_title="", 
-            showlegend=False,
-            height=350,
-            margin=dict(l=20, r=20, t=30, b=20)
-        )
-        fig_bar.update_traces(textposition='auto', width=0.5)
-        
-        if penghematan_rp > 0 and tagihan_baru < tagihan_bulanan:
-            y_pos_annotasi = (tagihan_bulanan + tagihan_baru) / 2
-            fig_bar.add_annotation(
-                x=0.5, y=y_pos_annotasi, 
-                text=f"SAVE {format_rupiah(penghematan_rp)}",
-                showarrow=False,
-                font=dict(size=14, color="#15803d", family="Inter"),
-                bgcolor="#dcfce7",
-                borderpad=6,
-                bordercolor="#15803d",
-                borderwidth=1,
-                rx=5 # Rounded corner annotation
-            )
-        
-        st.plotly_chart(fig_bar, use_container_width=True) 
+    st.subheader("Komparasi Tagihan Listrik Bulanan")
     
-    with col_text:
-        st.markdown("#### Analisis Penghematan")
-        st.info(f"""
-        Dengan sistem **{kapasitas_pv_kwp:.2f} kWp**, Anda memangkas tagihan sebesar **{format_rupiah(penghematan_rp)}** setiap bulan.
-        """)
-        st.markdown(f"**Tingkat Kemandirian Energi:**")
-        st.progress(int(skor_kemandirian))
-        st.caption(f"{skor_kemandirian:.1f}% kebutuhan rumah dipenuhi oleh matahari.")
+    data_biaya = pd.DataFrame({
+        'Kategori': ['Tagihan Awal', 'Tagihan Akhir'],
+        'Rupiah': [tagihan_bulanan, tagihan_baru],
+        'Teks': [format_rupiah(tagihan_bulanan), format_rupiah(tagihan_baru)]
+    })
+    
+    fig_bar = px.bar(
+        data_biaya, 
+        x='Kategori', 
+        y='Rupiah', 
+        text='Teks', 
+        color='Kategori',
+        color_discrete_map={'Tagihan Awal': '#334155', 'Tagihan Akhir': '#10b981'},
+        title='Perbandingan Tagihan Listrik: Sebelum vs Sesudah PV'
+    )
+    
+    fig_bar.update_layout(yaxis_title="", xaxis_title="", showlegend=False)
+    
+    # [PERBAIKAN ERROR] Menghapus 'rx' yang menyebabkan ValueError
+    if penghematan_rp > 0 and tagihan_baru < tagihan_bulanan:
+        y_pos_annotasi = (tagihan_bulanan + tagihan_baru) / 2
+        fig_bar.add_annotation(
+            x=0.5, y=y_pos_annotasi, 
+            text=f"Hemat: {format_rupiah(penghematan_rp)}",
+            showarrow=False,
+            font=dict(size=14, color="#15803d"),
+            bgcolor="#dcfce7",
+            borderpad=4,
+            bordercolor="#15803d",
+            borderwidth=1
+            # rx=5 SUDAH DIHAPUS KARENA MENYEBABKAN ERROR
+        )
+    
+    st.plotly_chart(fig_bar, use_container_width=True, theme=CHART_THEME) 
+    
+    st.markdown(f"**Tingkat Kemandirian Energi** dari PV Anda: **{skor_kemandirian:.1f}%**")
+    st.progress(int(skor_kemandirian))
 
 # GRAFIK 2: Proyeksi Jangka Panjang
 with tab2:
-    st.markdown("#### 🚀 Kapan modal Anda kembali?")
-    
+    st.subheader(f"Proyeksi Biaya Listrik Kumulatif Selama {TAHUN_ANALISIS} Tahun")
+
     df_plot_longterm = df_proyeksi.melt('Tahun', var_name='Skenario', value_name='Total Biaya Kumulatif')
 
     fig_proj = px.line(
@@ -428,80 +377,70 @@ with tab2:
         x='Tahun',
         y='Total Biaya Kumulatif',
         color='Skenario',
-        color_discrete_map={'Tanpa PV': '#ef4444', 'Dengan PV': COLOR_PRIMARY},
+        color_discrete_map={'Tanpa PV': '#ef4444', 'Dengan PV': '#10b981'},
+        title='Perbandingan Biaya Kumulatif Jangka Panjang',
         markers=True
     )
     
-    fig_proj.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(240,249,255,0.3)',
-        yaxis=dict(tickformat=",.0f", tickprefix="Rp ", gridcolor='#e2e8f0'),
-        xaxis=dict(gridcolor='#e2e8f0'),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hovermode="x unified"
-    )
+    fig_proj.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="Rp "))
 
     if payback_tahun <= TAHUN_ANALISIS:
         payback_cost = df_proyeksi[df_proyeksi['Tahun'] == payback_tahun]['Dengan PV'].iloc[0]
-        fig_proj.add_annotation(
-            x=payback_tahun, y=payback_cost,
-            text="Break Even Point (BEP)",
-            showarrow=True,
-            arrowhead=2,
-            arrowsize=1,
-            arrowwidth=2,
-            ax=0, ay=-40,
-            bgcolor="white",
-            bordercolor=COLOR_ACCENT,
-            font=dict(color=COLOR_ACCENT, size=12)
+        fig_proj.add_scatter(
+            x=[payback_tahun], y=[payback_cost], 
+            mode='markers', marker=dict(size=10, color='#3b82f6'),
+            name='Masa Balik Modal', showlegend=False
         )
     
-    st.plotly_chart(fig_proj, use_container_width=True)
-    st.caption(f"*Asumsi inflasi tarif listrik: {ASUMSI_INFLASI_LISTRIK*100}% per tahun.")
+    st.plotly_chart(fig_proj, use_container_width=True, theme=CHART_THEME)
+
+    st.markdown(f"""
+    * **Asumsi:** Kenaikan tarif listrik sebesar {ASUMSI_INFLASI_LISTRIK*100}% per tahun.
+    * **Total Hemat Setelah {TAHUN_ANALISIS} Tahun:** {format_rupiah(total_biaya_tanpa_pv - total_biaya_dengan_pv)}
+    """)
 
 # GRAFIK 3: Analisis Emisi
 with tab3:
-    c_don, c_txt = st.columns([1.5, 1], gap="large")
+    st.subheader("Porsi Pengurangan Jejak Karbon (CO₂)")
+    
+    c_don, c_txt = st.columns([1.5, 1])
     
     with c_don:
-        labels = ['Emisi Dicegah (Solar)', 'Emisi Grid (PLN)']
+        labels = ['Dicegah (PV)', 'Sisa (PLN)']
         values = [emisi_dicegah_grafik, emisi_tersisa_pln]
-        colors = [COLOR_PRIMARY, '#cbd5e1'] # Hijau vs Abu-abu
+        colors = ['#10b981', '#cbd5e1']
         
         fig_donut = go.Figure(data=[go.Pie(
             labels=labels, 
             values=values, 
-            hole=.7, 
+            hole=.6, 
             marker_colors=colors,
-            textinfo='none',
-            hoverinfo="label+value+percent"
+            hoverinfo="label+value+percent",
+            textinfo='percent'
         )])
         
+        # Tambah teks di tengah donut
+        # Menggunakan font color dari template default agar aman di dark mode
         fig_donut.update_layout(
-            annotations=[dict(text=f"{skor_kemandirian:.0f}%<br>Clean", x=0.5, y=0.5, font_size=24, showarrow=False, font_family="Poppins", font_color=COLOR_PRIMARY)],
+            annotations=[dict(text=f"{skor_kemandirian:.0f}%", x=0.5, y=0.5, font_size=20, showarrow=False)],
             showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5),
-            margin=dict(t=0, b=0, l=0, r=0),
-            height=300
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
         )
-        st.plotly_chart(fig_donut, use_container_width=True)
+        st.plotly_chart(fig_donut, use_container_width=True, theme=CHART_THEME)
     
     with c_txt:
-        st.markdown("#### Dampak Nyata")
-        st.success(f"Anda mencegah **{emisi_dicegah_total:.1f} kg CO₂** terlepas ke atmosfer setiap bulan.")
-        
-        st.markdown("##### Setara dengan:")
+        st.info(f"Dengan PV, Anda berhasil mengurangi emisi sebesar **{emisi_dicegah_grafik:.1f} kg CO₂** dari konsumsi rumah Anda.")
         st.markdown(f"""
-        - 🌳 Menanam **{int(emisi_dicegah_total/20)} pohon**
-        - 🚗 Menghapus **{int(emisi_dicegah_total*5)} km** perjalanan mobil bensin
-        - 💡 Menghemat daya untuk **{int(emisi_dicegah_total*10)} lampu LED** seharian
+        **Setara dengan:**
+        \n🌳 Menanam **{int(emisi_dicegah_total/20)} pohon**
+        \n🚗 Menghapus **{int(emisi_dicegah_total*5)} km** perjalanan mobil
         """)
 
-# TAB 4: Detail Teknis (Table Styling)
+# TAB 4: Detail Teknis (Styled Tables)
 with tab4:
-    col_tech1, col_tech2 = st.columns(2, gap="large")
+    col_tech1, col_tech2 = st.columns(2)
     
-    # CSS Table Custom
+    # CSS Table Custom agar teks terlihat di semua tema
     st.markdown("""
     <style>
     .styled-table {
@@ -510,23 +449,23 @@ with tab4:
         margin: 10px 0;
         font-size: 0.9em;
         font-family: 'Inter', sans-serif;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
     }
+    /* Header Table */
     .styled-table thead tr {
-        background-color: #f1f5f9;
-        color: #334155;
+        background-color: var(--secondary-background-color); 
+        color: var(--text-color);
         text-align: left;
+        border-bottom: 2px solid #10b981;
     }
+    /* Cells */
     .styled-table th, .styled-table td {
         padding: 12px 15px;
-        border-bottom: 1px solid #e2e8f0;
-    }
-    .styled-table tbody tr:last-of-type {
-        border-bottom: 2px solid #10b981;
+        border-bottom: 1px solid rgba(128,128,128,0.2);
+        color: var(--text-color);
     }
     .highlight-val {
         font-weight: 700;
-        color: #0f172a;
+        color: var(--text-color);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -537,8 +476,8 @@ with tab4:
             rows += f"<tr><td>{k}</td><td class='highlight-val'>{v}</td></tr>"
         
         return f"""
-        <div style="background:white; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
-            <h4 style="margin-bottom:10px; color:#334155;">{title}</h4>
+        <div style="padding:10px;">
+            <h4 style="margin-bottom:10px;">{title}</h4>
             <table class="styled-table">
                 {rows}
             </table>
@@ -547,21 +486,22 @@ with tab4:
 
     # BOX 1: Sistem & Energi
     with col_tech1:
-        html_sistem = create_html_table("⚙️ Spesifikasi Sistem", {
-            "Total Kapasitas PV": f"{kapasitas_pv_kwp:.2f} kWp",
+        # Menggunakan fungsi helper tabel HTML
+        html_sistem = create_html_table("⚙️ Sistem & Energi", {
+            "Kapasitas PV Total": f"{kapasitas_pv_kwp:.2f} kWp",
             "Jumlah Modul": f"{jumlah_modul} unit",
-            "Rating per Modul": f"{wp_pilihan} Wp",
-            "Estimasi Produksi": f"{produksi_pv_bulanan:.2f} kWh/bulan"
+            "Kapasitas 1 Modul": f"{wp_pilihan} Wp",
+            "Produksi Energi Bulanan": f"{produksi_pv_bulanan:.2f} kWh"
         })
         st.markdown(html_sistem, unsafe_allow_html=True)
         
-    # BOX 2: Finansial
+    # BOX 2: Finansial & Dampak
     with col_tech2:
-        html_fin = create_html_table("💸 Ringkasan Finansial", {
-            "Investasi Awal": format_rupiah(biaya_instalasi_pv),
-            "Tagihan Baru": format_rupiah(tagihan_baru),
-            "Penghematan": format_rupiah(penghematan_rp) + " /bulan",
-            "BEP (Balik Modal)": payback_display,
-            "Total Emisi Dicegah": f"{emisi_total_ton:.1f} Ton CO₂"
+        html_fin = create_html_table("💸 Finansial & Dampak", {
+            "Biaya Instalasi Awal": format_rupiah(biaya_instalasi_pv),
+            "Tagihan Bulanan Baru": format_rupiah(tagihan_baru),
+            "Penghematan Bulanan": format_rupiah(penghematan_rp),
+            "Masa Balik Modal": payback_display,
+            f"Total Emisi Dicegah ({TAHUN_ANALISIS} Thn)": f"{emisi_total_ton:.1f} ton CO₂"
         })
         st.markdown(html_fin, unsafe_allow_html=True)
