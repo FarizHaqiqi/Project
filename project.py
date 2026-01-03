@@ -373,7 +373,7 @@ with tab2:
 with tab3:
     st.subheader(f"Estimasi Produksi Energi Bulanan di {provinsi_pilihan}")
     
-    # --- 1. LOGIKA ZONASI MUSIM (AGAR LEBIH REALISTIS) ---
+    # --- 1. LOGIKA ZONASI MUSIM ---
     def get_pola_musim(nama_prov):
         nama = nama_prov.lower()
         
@@ -403,26 +403,27 @@ with tab3:
         'Produksi (kWh)': produksi_bulanan_simulasi
     })
     
-    # --- 2. MEMBUAT GRAFIK (CLEAN LOOK) ---
+    # --- 2. MEMBUAT GRAFIK (CLEAN - TANPA GARIS MENGGANGGU) ---
     warna_bar = '#e74c3c' if max(faktor_musim) > 1.10 else '#f39c12'
     
     fig_monthly = px.bar(
         df_monthly, 
         x='Bulan', 
         y='Produksi (kWh)',
-        text_auto='.0f', # Angka tetap ada di atas batang, tapi rapi
+        text_auto='.0f',
         title=f"Profil Energi Bulanan - {provinsi_pilihan}",
         color_discrete_sequence=[warna_bar]
     )
     
+    # UPDATE: Menghapus 'hovermode="x unified"' agar garis hilang
     fig_monthly.update_layout(
         yaxis_title="Energi (kWh)",
         xaxis_title="",
         bargap=0.3,
-        plot_bgcolor='rgba(0,0,0,0)',
-        hovermode="x unified" # Hover effect yang elegan
+        plot_bgcolor='rgba(0,0,0,0)'
     )
     
+    # Kita juga menghapus panah anotasi (Peak) agar bersih total
 
     st.plotly_chart(fig_monthly, use_container_width=True)
     
