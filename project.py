@@ -430,7 +430,7 @@ with tab3:
     # Ringkasan Bawah
     c1, c2 = st.columns(2)
     c1.metric("Total Produksi Setahun", f"{sum(produksi_bulanan_simulasi)/1000:.2f} MWh")
-    c2.metric("Variabilitas Musim", "Tinggi (Monsun)" if max(faktor_musim) > 1.10 else "Stabil (Ekuatorial)")
+    c2.metric("Variabilitas Musim", "Tinggi" if max(faktor_musim) > 1.10 else "Stabil")
 
 # GRAFIK 4: Analisis Emisi (Donut)
 with tab4:
